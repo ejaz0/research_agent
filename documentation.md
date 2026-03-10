@@ -208,9 +208,9 @@ The project now has explicit conversation state on the backend.
 
 The memory store is currently:
 
-- in-memory only
-- process-local
-- sufficient for a single running server
+- backed by SQLite
+- local to the running app instance and its database file
+- sufficient for a single-node deployment
 
 Each conversation keeps:
 
@@ -220,15 +220,16 @@ Each conversation keeps:
 
 This is a deliberate first step.
 
-Why not add a database immediately?
+Why SQLite first?
 
-- It would add a lot of complexity before the interaction model is stable.
-- In-memory state is enough to validate the product shape first.
+- It gives persistence without introducing infrastructure overhead.
+- It is part of the Python standard library.
+- It is enough for a local app and a showcase deployment.
 
 Tradeoff:
 
-- Restarting the server clears memory.
-- This does not support multiple instances or durable persistence yet.
+- It is not a full multi-user production datastore.
+- Concurrent write patterns are still limited compared with a dedicated database server.
 
 ### Configuration
 
@@ -548,21 +549,21 @@ Tradeoff:
 - The API is currently synchronous.
 - There is no job queue, streaming, or background execution yet.
 
-### 7. In-memory conversation memory instead of persistent storage
+### 7. SQLite conversation memory instead of a larger database system
 
 Chosen:
 
-- A simple server-side conversation store.
+- A simple server-side SQLite store.
 
 Why:
 
-- It enables follow-up questions now.
+- It enables follow-up questions and persistence now.
 - It keeps memory logic out of the frontend.
 - It is simple enough to change later.
 
 Tradeoff:
 
-- Memory disappears on restart.
+- This is still local persistence, not distributed state.
 - No shared state across multiple server instances.
 
 ## Extension Points
