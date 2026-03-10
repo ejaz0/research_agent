@@ -102,6 +102,8 @@ The tests are intentionally credit-safe. They use mocks and fake providers only,
 python3 -m unittest discover -s tests -v
 ```
 
+If you want a deeper explanation of the architecture and the design tradeoffs, see [documentation.md](documentation.md).
+
 ## What Changed In Phase 1
 
 This version fixes the main problems from the original prototype:
