@@ -77,16 +77,23 @@ The main execution path is:
 briefing/
   __init__.py
   __main__.py
+  api/
+    app.py
+    schemas.py
   cli.py
   config.py
   core/
     agent.py
   domain/
     models.py
+  memory/
+    store.py
   providers/
     fetch.py
     llm.py
     search.py
+frontend/
+  src/
 tests/
 main.py
 ```
@@ -104,6 +111,16 @@ The folders reflect responsibility, not technology:
 
 This separation keeps the core logic from being tightly coupled to any single vendor SDK or transport detail.
 
+## Interfaces
+
+The project currently has two user-facing interfaces:
+
+- a CLI in [briefing/cli.py](/Users/elvishasanaje/research_agent/briefing/cli.py)
+- an HTTP API in [briefing/api/app.py](/Users/elvishasanaje/research_agent/briefing/api/app.py)
+- a separate React frontend in [frontend/](/Users/elvishasanaje/research_agent/frontend)
+
+Both interfaces call the same pipeline. This is deliberate. The transport layer changes, but the core research behavior does not.
+
 ## How The Code Works
 
 ### CLI layer
@@ -118,6 +135,100 @@ The CLI is the top-level interface. It does four things:
 - Prints or writes the final report.
 
 It does not contain the research logic itself. That is a deliberate boundary. The CLI should stay thin.
+
+### API layer
+
+Files:
+
+- [briefing/api/app.py](/Users/elvishasanaje/research_agent/briefing/api/app.py)
+- [briefing/api/schemas.py](/Users/elvishasanaje/research_agent/briefing/api/schemas.py)
+
+The FastAPI app is a second interface over the same pipeline.
+
+It currently exposes:
+
+- `GET /`
+- `GET /api/health`
+- `POST /api/research`
+- `GET /api/conversations`
+- `POST /api/conversations/{id}/messages`
+
+The API layer is intentionally thin. Its responsibilities are:
+
+- validate request bodies
+- construct or obtain a pipeline instance
+- map pipeline errors to HTTP responses
+- serialize `ResearchReport` into JSON
+- manage conversation state through the memory store
+- serve the built frontend assets
+
+It should not contain fetching, search, or model logic.
+
+### Why add FastAPI now
+
+There are a few reasons this is a good architectural step:
+
+- It makes the project easier to demo.
+- It creates a path toward a frontend or hosted service.
+- It forces the core pipeline to remain interface-agnostic.
+
+The key constraint is that the API should wrap the pipeline, not replace it.
+
+### Frontend architecture
+
+The chat UI now lives in a separate React app under `frontend/`.
+
+That frontend is intentionally lightweight:
+
+- Vite for build/dev tooling
+- React for rendering and state
+- `fetch()` calls to the FastAPI `/api` routes
+- conversation history loaded from the backend instead of `localStorage`
+
+Why keep it this simple?
+
+- Easier to ship quickly.
+- Easier to inspect in a small repo.
+- Enough structure to grow without bringing in a larger frontend stack.
+
+Tradeoff:
+
+- Conversation memory is still in-memory only on the server.
+- There is no streaming response rendering yet.
+- The "chat" metaphor is a UI layer over a one-shot research pipeline, not a multi-turn reasoning backend.
+
+## Memory Architecture
+
+Files:
+
+- [briefing/memory/store.py](/Users/elvishasanaje/research_agent/briefing/memory/store.py)
+- [briefing/domain/models.py](/Users/elvishasanaje/research_agent/briefing/domain/models.py)
+
+The project now has explicit conversation state on the backend.
+
+The memory store is currently:
+
+- in-memory only
+- process-local
+- sufficient for a single running server
+
+Each conversation keeps:
+
+- metadata like title and timestamps
+- ordered message history
+- assistant reports attached to assistant messages
+
+This is a deliberate first step.
+
+Why not add a database immediately?
+
+- It would add a lot of complexity before the interaction model is stable.
+- In-memory state is enough to validate the product shape first.
+
+Tradeoff:
+
+- Restarting the server clears memory.
+- This does not support multiple instances or durable persistence yet.
 
 ### Configuration
 
@@ -419,6 +530,40 @@ Why:
 Tradeoff:
 
 - Less ergonomic than a richer config system once the project grows.
+
+### 6. Thin HTTP wrapper instead of HTTP-first architecture
+
+Chosen:
+
+- FastAPI as a transport layer around the pipeline.
+
+Why:
+
+- Keeps the core reusable from both CLI and API.
+- Avoids duplicating business logic.
+- Makes the app easier to test with fake pipelines.
+
+Tradeoff:
+
+- The API is currently synchronous.
+- There is no job queue, streaming, or background execution yet.
+
+### 7. In-memory conversation memory instead of persistent storage
+
+Chosen:
+
+- A simple server-side conversation store.
+
+Why:
+
+- It enables follow-up questions now.
+- It keeps memory logic out of the frontend.
+- It is simple enough to change later.
+
+Tradeoff:
+
+- Memory disappears on restart.
+- No shared state across multiple server instances.
 
 ## Extension Points
 

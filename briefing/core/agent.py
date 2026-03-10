@@ -1,10 +1,43 @@
 from __future__ import annotations
 
+from ..domain.models import ConversationMessage, ResearchReport, SourceFailure
 from ..config import Settings
-from ..domain.models import ResearchReport, SourceFailure
 from ..providers.fetch import DocumentFetcher, FetchError, RequestsDocumentFetcher
 from ..providers.llm import AnthropicResearchWriter, LLMError, ResearchWriter, derive_key_findings
 from ..providers.search import SearchProvider, SerpApiSearchProvider
+
+_FOLLOW_UP_PREFIXES = (
+    "what about",
+    "how about",
+    "also",
+    "and ",
+    "tell me more",
+    "more about",
+    "what happened",
+    "why",
+    "when",
+    "where",
+    "who",
+    "how",
+)
+
+
+def _build_search_query(
+    query: str,
+    conversation_history: list[ConversationMessage] | None,
+) -> str:
+    if not conversation_history:
+        return query
+
+    lowered = query.lower().strip()
+    prior_user_turns = [item.content for item in conversation_history if item.role == "user"]
+    if not prior_user_turns:
+        return query
+
+    if len(query.split()) <= 6 or any(lowered.startswith(prefix) for prefix in _FOLLOW_UP_PREFIXES):
+        return f"{prior_user_turns[-1]} {query}"
+
+    return query
 
 
 class ResearchPipeline:
@@ -20,12 +53,17 @@ class ResearchPipeline:
         self.writer = writer
         self.max_search_results = max_search_results
 
-    def run(self, query: str) -> ResearchReport:
+    def run(
+        self,
+        query: str,
+        conversation_history: list[ConversationMessage] | None = None,
+    ) -> ResearchReport:
         query = query.strip()
         if not query:
             raise ValueError("The research query cannot be empty.")
 
-        search_results = self.search_provider.search(query, self.max_search_results)
+        search_query = _build_search_query(query, conversation_history)
+        search_results = self.search_provider.search(search_query, self.max_search_results)
         if not search_results:
             return ResearchReport(
                 query=query,
@@ -62,6 +100,7 @@ class ResearchPipeline:
                 query=query,
                 source_summaries=source_summaries,
                 failures=failures,
+                conversation_history=conversation_history,
             )
         except LLMError as exc:
             failures.append(SourceFailure(title="Synthesis stage", url="", error=str(exc)))

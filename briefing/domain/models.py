@@ -91,3 +91,21 @@ class ResearchReport:
                 for item in self.failures
             ],
         }
+
+
+@dataclass(slots=True)
+class ConversationMessage:
+    id: str
+    role: str
+    content: str
+    created_at: str
+    report: ResearchReport | None = None
+
+
+@dataclass(slots=True)
+class Conversation:
+    id: str
+    title: str
+    created_at: str
+    updated_at: str
+    messages: list[ConversationMessage] = field(default_factory=list)

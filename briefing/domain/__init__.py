@@ -1,3 +1,19 @@
-from .models import Document, ResearchReport, SearchResult, SourceFailure, SourceSummary
+from .models import (
+    Conversation,
+    ConversationMessage,
+    Document,
+    ResearchReport,
+    SearchResult,
+    SourceFailure,
+    SourceSummary,
+)
 
-__all__ = ["Document", "ResearchReport", "SearchResult", "SourceFailure", "SourceSummary"]
+__all__ = [
+    "Conversation",
+    "ConversationMessage",
+    "Document",
+    "ResearchReport",
+    "SearchResult",
+    "SourceFailure",
+    "SourceSummary",
+]

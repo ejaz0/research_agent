@@ -34,16 +34,23 @@ The goal for this version is not "perfect autonomous research." It is a solid fo
 
 ```text
 briefing/
+  api/
+    app.py
+    schemas.py
   cli.py
   config.py
   core/
     agent.py
   domain/
     models.py
+  memory/
+    store.py
   providers/
     fetch.py
     llm.py
     search.py
+frontend/
+  src/
 tests/
 main.py
 ```
@@ -103,6 +110,50 @@ python3 -m unittest discover -s tests -v
 ```
 
 If you want a deeper explanation of the architecture and the design tradeoffs, see [documentation.md](documentation.md).
+
+## FastAPI App
+
+The project now also exposes the same pipeline over HTTP with FastAPI.
+
+Run it locally:
+
+```bash
+cd frontend
+npm install
+npm run build
+cd ..
+uvicorn briefing.api.app:app --reload
+```
+
+Useful endpoints:
+
+- `GET /`
+- `GET /api/health`
+- `POST /api/research`
+- `GET /api/conversations`
+- `POST /api/conversations/{id}/messages`
+- interactive docs at `GET /docs`
+
+The root route now serves a React frontend with:
+
+- a conversation sidebar
+- server-backed conversation history
+- a message composer
+- structured assistant replies from the research pipeline
+
+Example API request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/research \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "What has OpenAI launched recently?",
+    "max_sources": 3,
+    "include_markdown": true
+  }'
+```
+
+The API uses the same core pipeline as the CLI. The frontend is now a separate React app in `frontend/`, and the backend keeps in-memory conversation history so follow-up prompts can reuse prior context.
 
 ## What Changed In Phase 1
 

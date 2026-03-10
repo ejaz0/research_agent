@@ -4,7 +4,7 @@ import json
 import re
 from typing import Any, Iterable, Protocol
 
-from ..domain.models import Document, SourceFailure, SourceSummary
+from ..domain.models import ConversationMessage, Document, SourceFailure, SourceSummary
 
 
 class LLMError(RuntimeError):
@@ -20,6 +20,7 @@ class ResearchWriter(Protocol):
         query: str,
         source_summaries: list[SourceSummary],
         failures: list[SourceFailure],
+        conversation_history: list[ConversationMessage] | None = None,
     ) -> tuple[str, list[str]]:
         """Create the executive summary and key findings."""
 
@@ -121,6 +122,7 @@ class AnthropicResearchWriter:
         query: str,
         source_summaries: list[SourceSummary],
         failures: list[SourceFailure],
+        conversation_history: list[ConversationMessage] | None = None,
     ) -> tuple[str, list[str]]:
         source_section = "\n\n".join(
             [
@@ -136,10 +138,15 @@ class AnthropicResearchWriter:
         failure_section = "\n".join(
             f"- {item.title} ({item.url}): {item.error}" for item in failures
         ) or "- None"
+        conversation_section = "\n".join(
+            f"{item.role.title()}: {item.content}" for item in (conversation_history or [])[-6:]
+        ) or "- None"
 
         prompt = (
             "You are compiling a research brief from source summaries.\n"
             f"Research question: {query}\n\n"
+            "Prior conversation context:\n"
+            f"{conversation_section}\n\n"
             "Available source summaries:\n"
             f"{source_section}\n\n"
             "Fetch or processing failures:\n"
