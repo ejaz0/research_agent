@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "research-agent"
+version = "0.1.0"
+description = "Generate structured research briefs from live web sources."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.84.0",
+    "beautifulsoup4>=4.12.0",
+    "google-search-results>=2.4.2",
+    "python-dotenv>=1.0.1",
+    "requests>=2.32.0",
+]
+
+[project.scripts]
+research-agent = "briefing.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["briefing*"]
