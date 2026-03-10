@@ -28,9 +28,11 @@ from .schemas import (
 PipelineFactory = Callable[[int | None], ResearchPipeline]
 
 
-def default_pipeline_factory(max_sources: int | None = None) -> ResearchPipeline:
-    settings = Settings.from_env()
-    return build_default_pipeline(settings, max_search_results=max_sources)
+def build_pipeline_factory(settings: Settings) -> PipelineFactory:
+    def factory(max_sources: int | None = None) -> ResearchPipeline:
+        return build_default_pipeline(settings, max_search_results=max_sources)
+
+    return factory
 
 
 def _serialize_report(report: ResearchReport, include_markdown: bool) -> dict[str, Any]:
@@ -125,7 +127,13 @@ def _frontend_not_built_response(frontend_dist: Path) -> HTMLResponse:
     return HTMLResponse(content=content)
 
 
-def create_app(pipeline_factory: PipelineFactory | None = None) -> FastAPI:
+def create_app(
+    pipeline_factory: PipelineFactory | None = None,
+    *,
+    settings: Settings | None = None,
+    conversation_store: ConversationStore | None = None,
+) -> FastAPI:
+    settings = settings or Settings.from_env()
     project_root = Path(__file__).resolve().parents[2]
     frontend_dist = project_root / "frontend" / "dist"
     assets_dir = frontend_dist / "assets"
@@ -134,10 +142,16 @@ def create_app(pipeline_factory: PipelineFactory | None = None) -> FastAPI:
         version="0.1.0",
         description="HTTP wrapper around the research brief pipeline.",
     )
-    app.state.pipeline_factory = pipeline_factory or default_pipeline_factory
-    app.state.conversation_store = ConversationStore()
+    app.state.pipeline_factory = pipeline_factory or build_pipeline_factory(settings)
+    app.state.conversation_store = conversation_store or ConversationStore(
+        settings.conversation_db_path
+    )
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.on_event("shutdown")
+    def close_resources() -> None:
+        app.state.conversation_store.close()
 
     @app.get("/", include_in_schema=False, response_model=None)
     def serve_frontend():

@@ -137,7 +137,7 @@ Useful endpoints:
 The root route now serves a React frontend with:
 
 - a conversation sidebar
-- server-backed conversation history
+- SQLite-backed conversation history
 - a message composer
 - structured assistant replies from the research pipeline
 
@@ -153,7 +153,9 @@ curl -X POST http://127.0.0.1:8000/api/research \
   }'
 ```
 
-The API uses the same core pipeline as the CLI. The frontend is now a separate React app in `frontend/`, and the backend keeps in-memory conversation history so follow-up prompts can reuse prior context.
+The API uses the same core pipeline as the CLI. The frontend is now a separate React app in `frontend/`, and the backend stores conversation history in SQLite so follow-up prompts survive server restarts.
+
+By default the app writes its conversation DB to `data/research_agent.sqlite3`. You can override that with `CONVERSATION_DB_PATH`.
 
 ## What Changed In Phase 1
 
@@ -172,6 +174,7 @@ This version fixes the main problems from the original prototype:
 - Content extraction is still lightweight and could be improved with a stronger readability layer.
 - Final synthesis quality still depends on the model and the quality of the retrieved sources.
 - There is no caching yet, so repeated runs will hit the same services again.
+- Conversation memory is persistent, but it is still single-node local storage rather than a multi-user production setup.
 
 ## Roadmap
 

@@ -19,6 +19,7 @@ class Settings:
     max_search_results: int
     request_timeout_seconds: int
     max_document_chars: int
+    conversation_db_path: Path
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -29,4 +30,10 @@ class Settings:
             max_search_results=int(os.getenv("MAX_SEARCH_RESULTS", "5")),
             request_timeout_seconds=int(os.getenv("REQUEST_TIMEOUT_SECONDS", "10")),
             max_document_chars=int(os.getenv("MAX_DOCUMENT_CHARS", "6000")),
+            conversation_db_path=Path(
+                os.getenv(
+                    "CONVERSATION_DB_PATH",
+                    _PROJECT_ROOT / "data" / "research_agent.sqlite3",
+                )
+            ),
         )
