@@ -31,6 +31,12 @@ class ConversationStore:
         self._connection.execute("PRAGMA foreign_keys = ON")
         self._initialize_schema()
 
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
     def _initialize_schema(self) -> None:
         with self._connection:
             self._connection.executescript(

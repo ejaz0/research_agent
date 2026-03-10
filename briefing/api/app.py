@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import asynccontextmanager
 from html import escape
 from pathlib import Path
 from typing import Any
@@ -137,21 +138,25 @@ def create_app(
     project_root = Path(__file__).resolve().parents[2]
     frontend_dist = project_root / "frontend" / "dist"
     assets_dir = frontend_dist / "assets"
+    store = conversation_store or ConversationStore(settings.conversation_db_path)
+
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        try:
+            yield
+        finally:
+            app.state.conversation_store.close()
+
     app = FastAPI(
         title="Research Agent API",
         version="0.1.0",
         description="HTTP wrapper around the research brief pipeline.",
+        lifespan=lifespan,
     )
     app.state.pipeline_factory = pipeline_factory or build_pipeline_factory(settings)
-    app.state.conversation_store = conversation_store or ConversationStore(
-        settings.conversation_db_path
-    )
+    app.state.conversation_store = store
     if assets_dir.exists():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
-
-    @app.on_event("shutdown")
-    def close_resources() -> None:
-        app.state.conversation_store.close()
 
     @app.get("/", include_in_schema=False, response_model=None)
     def serve_frontend():
