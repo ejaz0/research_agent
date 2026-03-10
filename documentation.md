@@ -193,9 +193,67 @@ Why keep it this simple?
 
 Tradeoff:
 
-- Conversation memory is still in-memory only on the server.
+- Conversation memory is local SQLite persistence, not a shared multi-instance store.
 - There is no streaming response rendering yet.
 - The "chat" metaphor is a UI layer over a one-shot research pipeline, not a multi-turn reasoning backend.
+
+## Deployment Architecture
+
+The repo now supports a container-first deployment model.
+
+Files:
+
+- [Dockerfile](/Users/elvishasanaje/research_agent/Dockerfile)
+- [compose.yml](/Users/elvishasanaje/research_agent/compose.yml)
+- [ci.yml](/Users/elvishasanaje/research_agent/.github/workflows/ci.yml)
+- [docker-publish.yml](/Users/elvishasanaje/research_agent/.github/workflows/docker-publish.yml)
+
+### Docker shape
+
+The Docker image uses a multi-stage build:
+
+1. a Node stage to build the React frontend
+2. a Python runtime stage to run FastAPI and serve the built frontend
+
+Why this shape:
+
+- One deployable artifact.
+- No separate frontend container required for a simple deployment.
+- Smaller runtime image than shipping Node in production.
+
+Tradeoff:
+
+- Frontend changes require rebuilding the application image.
+- This is optimized for simplicity, not for independently scaling frontend and backend tiers.
+
+### Compose shape
+
+`compose.yml` runs a single app container and mounts `./data` into `/app/data`.
+
+Why:
+
+- SQLite needs a writable persistent volume.
+- This is the smallest useful local deployment setup.
+
+Tradeoff:
+
+- The deployment is single-node by design.
+- SQLite is a reasonable local persistence layer, but not the right choice for horizontally scaled production.
+
+### CI/CD shape
+
+The CI workflow does three things:
+
+- run Python tests
+- build the React frontend
+- build the Docker image
+
+The Docker publish workflow pushes images to GHCR.
+
+Why keep CI and image publishing separate:
+
+- CI should validate every PR and branch change.
+- Registry publishing should happen only on selected branches, tags, or manual runs.
 
 ## Memory Architecture
 
@@ -243,6 +301,7 @@ File: [briefing/config.py](/Users/elvishasanaje/research_agent/briefing/config.p
 - max search results
 - request timeout
 - max fetched document length
+- conversation database path
 
 Why use a settings object instead of reading env vars all over the code?
 

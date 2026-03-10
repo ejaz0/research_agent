@@ -17,7 +17,7 @@ export default function Sidebar({
       </div>
 
       <p className="sidebar__copy">
-        React frontend, FastAPI backend, and in-memory conversation state on the server.
+        React frontend, FastAPI backend, and SQLite-backed conversation history.
       </p>
 
       <div className="history-list" aria-label="Conversation history">
