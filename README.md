@@ -157,6 +157,47 @@ The API uses the same core pipeline as the CLI. The frontend is now a separate R
 
 By default the app writes its conversation DB to `data/research_agent.sqlite3`. You can override that with `CONVERSATION_DB_PATH`.
 
+## Docker
+
+You can run the full app stack with Docker.
+
+Build the image:
+
+```bash
+docker build -t research-agent:local .
+```
+
+Run it directly:
+
+```bash
+docker run --rm -p 8000:8000 \
+  --env-file .env \
+  -e CONVERSATION_DB_PATH=/app/data/research_agent.sqlite3 \
+  -v "$(pwd)/data:/app/data" \
+  research-agent:local
+```
+
+Or use Compose:
+
+```bash
+docker compose up --build
+```
+
+That will:
+
+- build the React frontend in the image
+- serve the FastAPI app on port `8000`
+- persist conversation history by mounting `./data` into the container
+
+## CI/CD
+
+The repo now includes two GitHub Actions workflows:
+
+- [ci.yml](/Users/elvishasanaje/research_agent/.github/workflows/ci.yml) runs backend tests, builds the React frontend, and verifies the Docker image builds on pushes to `main` and on pull requests.
+- [docker-publish.yml](/Users/elvishasanaje/research_agent/.github/workflows/docker-publish.yml) builds and pushes a container image to `ghcr.io/<owner>/<repo>` on pushes to `main`, version tags like `v1.0.0`, and manual dispatches.
+
+If you enable GitHub Container Registry for the repo, the publish workflow is enough to give you a basic CD path for container deployments.
+
 ## What Changed In Phase 1
 
 This version fixes the main problems from the original prototype:
